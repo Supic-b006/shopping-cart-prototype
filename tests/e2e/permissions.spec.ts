@@ -19,27 +19,71 @@ test("AC-15: other customer order is not visible", async ({
   browser,
   request,
 }) => {
-  await login(page);
-  await add(page, "P1", 1);
+  await login(page, "cus_normal");
+  expect((await add(page, "P1", 1)).status()).toBe(200);
+
   await cart(page);
-  const id = (await (await checkout(page)).json()).data.order.orderId;
-  const c = await browser.newContext({
+
+  const checkoutResponse = await checkout(
+    page,
+    "inCity",
+    "standard",
+    {
+      expectSuccess: true,
+      expectedStatus: 201,
+    },
+  );
+
+  const orderId =
+    (await checkoutResponse.json()).data.order.orderId;
+
+  const context = await browser.newContext({
     baseURL: "http://127.0.0.1:5173",
-    recordVideo: { dir: "test-results/actor-videos/" },
+    recordVideo: {
+      dir: "test-results/actor-videos/",
+    },
   });
+
   try {
-    const p = await c.newPage();
-    await login(p, "cus_prime");
-    await p.goto(`/orders/${id}`);
-    await expect(p.getByTestId("app-message")).toHaveAttribute(
-      "data-code",
+    const otherPage = await context.newPage();
+    await login(otherPage, "cus_prime");
+
+    const apiResponse = await call(
+      otherPage,
+      request,
+      `/orders/${orderId}`,
+    );
+
+    expect(apiResponse.status()).toBe(404);
+    expect((await apiResponse.json()).error.code).toBe(
       "ORDER_NOT_FOUND",
     );
-    const r = await call(p, request, `/orders/${id}`);
-    expect(r.status()).toBe(404);
-    expect((await r.json()).error.code).toBe("ORDER_NOT_FOUND");
+
+    const responsePromise = otherPage.waitForResponse(
+      (response) =>
+        new URL(response.url()).pathname ===
+          `/api/orders/${orderId}` &&
+        response.request().method() === "GET",
+    );
+
+    await otherPage.goto(`/orders/${orderId}`);
+
+    const uiResponse = await responsePromise;
+
+    expect(uiResponse.status()).toBe(404);
+    expect((await uiResponse.json()).error.code).toBe(
+      "ORDER_NOT_FOUND",
+    );
+
+    await expect(
+      otherPage.getByTestId("app-message"),
+    ).toHaveAttribute("data-code", "ORDER_NOT_FOUND");
+
+    await expect(
+      otherPage.getByTestId("order-detail-id"),
+    ).toHaveCount(0);
   } finally {
-    await c.close();
+    await context.close();
   }
 });
 test("AC-16: reports all invalid product fields without mutation", async ({

@@ -11,6 +11,7 @@ import {
   actor,
   closeCoupon,
 } from "./helpers";
+
 for (const c of [
   {
     ac: 4,
@@ -93,13 +94,32 @@ for (const c of [
       expect((await read(page, request, "/cart")).couponCode).toBeNull();
     }
   });
-test("AC-9: overweight preserves cart and stage", async ({ page, request }) => {
+test("AC-9: overweight preserves cart and stage", async ({
+  page,
+  request,
+}) => {
   await login(page);
-  await add(page, "P3", 3);
+
+  const addResponse = await add(page, "P3", 3);
+  expect(addResponse.status()).toBe(200);
+
   await cart(page);
+
   const before = await read(page, request, "/cart");
-  expect((await checkout(page)).status()).toBe(409);
+
+  const response = await checkout(page, "inCity", "standard", {
+    expectSuccess: false,
+    expectedStatus: 409,
+  });
+
+  const body = await response.json();
+
+  expect(body.error.code).toBe("WEIGHT_LIMIT_EXCEEDED");
+
   await error(page, "WEIGHT_LIMIT_EXCEEDED");
-  expect(await read(page, request, "/cart")).toEqual(before);
   await expect(page.getByTestId("page-cart")).toBeVisible();
+
+  const after = await read(page, request, "/cart");
+
+  expect(after).toEqual(before);
 });
