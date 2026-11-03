@@ -1,0 +1,8 @@
+Validation: 23 Playwright tests passed (31.6 seconds), Chromium, one worker.
+TypeScript strict check for playwright.config.ts and tests/e2e/*.ts passed.
+UI uses real frontend -> Express HTTP -> repository SQL against temporary PGlite PostgreSQL-compatible engine with an adapter (not Supabase Cloud, not pg TCP/TLS).
+Actual Supabase project credentials were not used; rerun against your isolated Supabase test project before claiming Supabase acceptance results.
+Videos and traces were successfully generated. examples/AC-4-demo.mp4 is an actual recording of the AC-4 browser test on temporary seeded data, converted from Playwright's WebM. It was run without slowMo; set E2E_SLOWMO=250 for a slower demonstration.
+AC-11c, AC-14 and AC-17 deliberately exercise inaccessible/protected commands through Playwright API requests; they are API acceptance cases, not purely click-driven E2E cases.
+No claim of full FR/DC/boundary coverage beyond these 23 acceptance cases.
+Branch creation and Supabase setup are instructions for the user's own working copy; no GitHub repository was modified.
