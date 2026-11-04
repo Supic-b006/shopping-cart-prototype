@@ -17,7 +17,11 @@
     "db:seed": "npm run db:seed -w backend",
     "test": "npm test -w backend",
     "test:domain": "npm run test:domain -w backend",
-    "test:http": "npm run test:http -w backend"
+    "test:http": "npm run test:http -w backend",
+    "test:unit": "npm run test:unit -w backend",
+    "test:unit:team": "npm run test:unit:team -w backend",
+    "test:coverage": "npm run test:coverage -w backend",
+    "typecheck:unit": "npm run typecheck:unit -w backend"
   },
   "devDependencies": {
     "@vitest/ui": "^5.1.0",
