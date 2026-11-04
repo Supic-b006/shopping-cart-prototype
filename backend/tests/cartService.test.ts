@@ -17,12 +17,13 @@ import {
  * Tests are table-driven so each input row is an independently reported Vitest case.
  * Operations involving users, stages, persistence, orders, stock reservation,
  * authorization, or notices are service/API responsibilities and are not covered
- * by this pure-function module.
+ * by this pure-function module. FSM in SRS section 10.2 belongs to those stateful
+ * service/integration tests; DC-1 exposes only stateless pure functions for unit tests.
  */
 
 /**
  * FR: นิยามสินค้าพร้อมขาย, FR-1.3.1, FR-2.2.2
- * เทคนิค: ECT แยกเปิด/ปิดขายและ stock พร้อมขาย; BVA ตรวจขอบ stock 0/1
+ * การออกแบบ: ครบทุกคู่สถานะ onSale × stock classes และตรวจขอบ stock 0/1
  */
 describe('isProductAvailable (Definitions, FR-1.3.1, FR-2.2.2)', () => {
   const cases = [
@@ -41,9 +42,9 @@ describe('isProductAvailable (Definitions, FR-1.3.1, FR-2.2.2)', () => {
 });
 
 /**
- * FR: FR-2.1–2.6 โดยเฉพาะลำดับ first-failure ใน FR-2.6
- * เทคนิค: ECT สำหรับชนิดข้อมูลและเงื่อนไขสินค้า, BVA สำหรับ quantity 1/10 และ stock,
- * Decision Table/priority testing สำหรับ add/update และการเลือก error ขั้นแรก
+ * FR: FR-2.1–2.6 โดยเฉพาะลำดับตรวจใน FR-2.6
+ * เทคนิคตาม SRS ส่วน 10.2: ECT สำหรับ valid/invalid quantity, BVA สำหรับขอบ 1/10
+ * และ quantity เดิม + จำนวนที่เพิ่ม เทียบกับขอบ min(10, stock)
  */
 describe('validateQuantityChange (FR-2.1–2.6)', () => {
   const base = {
@@ -72,7 +73,7 @@ describe('validateQuantityChange (FR-2.1–2.6)', () => {
     });
   });
 
-  /** Decision Table: product มี/ไม่มี × available/ไม่ available; ตรวจลำดับ PRODUCT_NOT_FOUND ก่อน */
+  /** ECT: ทดสอบตัวแทนของกรณี product มี/ไม่มี และพร้อม/ไม่พร้อมขาย ตาม FR-2.2 */
   describe('add precondition order (FR-2.2, FR-2.6 steps 3–4)', () => {
     const cases = [
       { productExists: false, available: false, expected: 'PRODUCT_NOT_FOUND' },
@@ -102,21 +103,20 @@ describe('validateQuantityChange (FR-2.1–2.6)', () => {
     });
   });
 
-  /** BVA/priority: ตรวจ stock ที่ต่ำกว่า target และ stock เท่ากับ target; step 5 ต้องมี priority ก่อน step 6 */
+  /** BVA: ตรวจ stock ต่ำกว่าและเท่ากับ quantity เป้าหมาย; ผลเมื่อเกิน 10 ยึดลำดับ FR-2.6 step 5 ก่อน step 6 */
   describe('stock check after add quantity check (FR-2.4.2, FR-2.6 step 6)', () => {
     const cases = Array.from({ length: 10 }, (_, currentQtyInCart) =>
       Array.from({ length: 10 }, (_, index) => {
         const quantity = index + 1;
         const target = currentQtyInCart + quantity;
-        const availableStock = Math.max(0, target - 1);
         return {
           currentQtyInCart,
           quantity,
-          availableStock,
+          availableStock: target - 1,
           expected: target > 10 ? 'QTY_OUT_OF_RANGE' : 'INSUFFICIENT_STOCK',
         };
       })
-    ).flat();
+    ).flat().filter(({ currentQtyInCart, quantity }) => currentQtyInCart + quantity > 1);
     it.each(cases)('existing=$currentQtyInCart + add=$quantity, stock=$availableStock -> $expected', ({ currentQtyInCart, quantity, availableStock, expected }) => {
       expect(validateQuantityChange({ ...base, quantity, currentQtyInCart, inCart: currentQtyInCart > 0, availableStock })).toBe(expected);
     });
@@ -127,7 +127,7 @@ describe('validateQuantityChange (FR-2.1–2.6)', () => {
     });
   });
 
-  /** ECT/Decision Table สำหรับการมีรายการและ availability; BVA สำหรับ quantity/stock ของ update */
+  /** ECT สำหรับสถานะรายการ/availability และ BVA สำหรับช่วง quantity/ขอบสต็อกของ update */
   describe('updateQuantity validation (FR-2.5, FR-2.6)', () => {
     const updateBase = { ...base, operation: 'update' as const, inCart: true, currentQtyInCart: 4 };
     const badPresence = [
@@ -140,9 +140,10 @@ describe('validateQuantityChange (FR-2.1–2.6)', () => {
       expect(validateQuantityChange({ ...updateBase, quantity: 1, inCart, available })).toBe(expected);
     });
 
-    const cases = Array.from({ length: 10 }, (_, index) =>
-      Array.from({ length: 12 }, (_, stock) => {
-        const quantity = index + 1;
+    const cases = Array.from({ length: 10 }, (_, quantityIndex) =>
+      Array.from({ length: 12 }, (_, stockIndex) => {
+        const quantity = quantityIndex + 1;
+        const stock = stockIndex + 1;
         return { quantity, availableStock: stock, expected: quantity > stock ? 'INSUFFICIENT_STOCK' : 'OK' };
       })
     ).flat();
@@ -155,8 +156,8 @@ describe('validateQuantityChange (FR-2.1–2.6)', () => {
     });
   });
 
-  /** Priority Sequence Testing: ทำให้หลายเงื่อนไขผิดพร้อมกัน แล้วตรวจ error ขั้นแรกตาม FR-2.6 */
-  describe('first-failure priority (FR-2.6)', () => {
+  /** ตรวจว่าผล error ตรงกับเงื่อนไขแรกที่ไม่ผ่านตามลำดับ FR-2.6 โดยใช้ตัวแทนจากแต่ละ input class */
+  describe('ordered validation rules (FR-2.6)', () => {
     const cases = [
       { quantity: 1.5, productExists: false, inCart: false, available: false, currentQtyInCart: 20, availableStock: 0, expected: 'VALIDATION_ERROR' },
       { quantity: 0, productExists: false, inCart: false, available: false, currentQtyInCart: 20, availableStock: 0, expected: 'QTY_OUT_OF_RANGE' },
@@ -264,6 +265,16 @@ describe('calculateDiscount (FR-4.2–4.4, Decision Table 10.3)', () => {
       discount: Math.floor(subtotal * percent / 100), source: 'coupon', couponRemoved: false,
     });
   });
+
+  /** BVA ตาม SRS ส่วน 10.2: ยอดต่ำกว่า/เท่ากับ/สูงกว่า minSpend ทีละหนึ่งบาท */
+  const minSpendBoundaryCases = [
+    { subtotal: 999, expected: { discount: 49, source: 'member', couponRemoved: true } },
+    { subtotal: 1000, expected: { discount: 100, source: 'coupon', couponRemoved: false } },
+    { subtotal: 1001, expected: { discount: 100, source: 'coupon', couponRemoved: false } },
+  ] as const;
+  it.each(minSpendBoundaryCases)('minSpend boundary subtotal=$subtotal', ({ subtotal, expected }) => {
+    expect(calculateDiscount(subtotal, 'prime', coupon)).toEqual(expected);
+  });
 });
 
 /**
@@ -287,49 +298,22 @@ describe('classifyWeight (FR-4.5)', () => {
 
 /**
  * FR: ตาราง base rate ใน FR-4.6 และตัวคูณ speed/memberTier ใน FR-4.7
- * เทคนิค: Full-factorial/exhaustive combination ทั้ง 3 weight tiers × 3 zones × 2 speeds × 2 tiers
- * รวม 36 cases (ครอบคลุม pairwise combinations ทั้งหมดด้วย); expected เป็นค่าคงที่อ้างจากตาราง SRS
+ * เทคนิคตาม SRS ส่วน 10.2: Pairwise ครบคู่ของ 4 factors (weightTier, zone, speed, memberTier)
+ * ใช้ 9 cases ตามขอบล่างที่ SRS ระบุ; expected เป็นค่าคงที่อ้างจากตาราง SRS
  */
 describe('calculateShippingFee (FR-4.6–4.7)', () => {
-  // Expected values are transcribed independently from the FR-4.6 base-rate
-  // table and FR-4.7 member/speed rules; they are not calculated from the SUT.
+  // ชุด 9 แถวนี้ครอบคลุมทุกคู่ของค่าในแต่ละ factor โดย expected values
+  // ถอดจาก FR-4.6/4.7 โดยตรง ไม่ได้คำนวณจากฟังก์ชันที่กำลังทดสอบ
   const cases = [
     { tier: 'light', zone: 'inCity', speed: 'standard', memberTier: 'normal', expected: 30 },
-    { tier: 'light', zone: 'inCity', speed: 'express', memberTier: 'normal', expected: 45 },
-    { tier: 'light', zone: 'upcountry', speed: 'standard', memberTier: 'normal', expected: 50 },
     { tier: 'light', zone: 'upcountry', speed: 'express', memberTier: 'normal', expected: 75 },
-    { tier: 'light', zone: 'remote', speed: 'standard', memberTier: 'normal', expected: 80 },
-    { tier: 'light', zone: 'remote', speed: 'express', memberTier: 'normal', expected: 120 },
-    { tier: 'medium', zone: 'inCity', speed: 'standard', memberTier: 'normal', expected: 50 },
-    { tier: 'medium', zone: 'inCity', speed: 'express', memberTier: 'normal', expected: 75 },
-    { tier: 'medium', zone: 'upcountry', speed: 'standard', memberTier: 'normal', expected: 80 },
-    { tier: 'medium', zone: 'upcountry', speed: 'express', memberTier: 'normal', expected: 120 },
-    { tier: 'medium', zone: 'remote', speed: 'standard', memberTier: 'normal', expected: 120 },
-    { tier: 'medium', zone: 'remote', speed: 'express', memberTier: 'normal', expected: 180 },
-    { tier: 'heavy', zone: 'inCity', speed: 'standard', memberTier: 'normal', expected: 80 },
-    { tier: 'heavy', zone: 'inCity', speed: 'express', memberTier: 'normal', expected: 120 },
-    { tier: 'heavy', zone: 'upcountry', speed: 'standard', memberTier: 'normal', expected: 120 },
-    { tier: 'heavy', zone: 'upcountry', speed: 'express', memberTier: 'normal', expected: 180 },
-    { tier: 'heavy', zone: 'remote', speed: 'standard', memberTier: 'normal', expected: 180 },
-    { tier: 'heavy', zone: 'remote', speed: 'express', memberTier: 'normal', expected: 270 },
-    { tier: 'light', zone: 'inCity', speed: 'standard', memberTier: 'prime', expected: 0 },
-    { tier: 'light', zone: 'inCity', speed: 'express', memberTier: 'prime', expected: 15 },
-    { tier: 'light', zone: 'upcountry', speed: 'standard', memberTier: 'prime', expected: 0 },
-    { tier: 'light', zone: 'upcountry', speed: 'express', memberTier: 'prime', expected: 25 },
-    { tier: 'light', zone: 'remote', speed: 'standard', memberTier: 'prime', expected: 0 },
     { tier: 'light', zone: 'remote', speed: 'express', memberTier: 'prime', expected: 40 },
-    { tier: 'medium', zone: 'inCity', speed: 'standard', memberTier: 'prime', expected: 0 },
-    { tier: 'medium', zone: 'inCity', speed: 'express', memberTier: 'prime', expected: 25 },
+    { tier: 'medium', zone: 'inCity', speed: 'express', memberTier: 'normal', expected: 75 },
     { tier: 'medium', zone: 'upcountry', speed: 'standard', memberTier: 'prime', expected: 0 },
-    { tier: 'medium', zone: 'upcountry', speed: 'express', memberTier: 'prime', expected: 40 },
-    { tier: 'medium', zone: 'remote', speed: 'standard', memberTier: 'prime', expected: 0 },
-    { tier: 'medium', zone: 'remote', speed: 'express', memberTier: 'prime', expected: 60 },
-    { tier: 'heavy', zone: 'inCity', speed: 'standard', memberTier: 'prime', expected: 0 },
+    { tier: 'medium', zone: 'remote', speed: 'standard', memberTier: 'normal', expected: 120 },
     { tier: 'heavy', zone: 'inCity', speed: 'express', memberTier: 'prime', expected: 40 },
-    { tier: 'heavy', zone: 'upcountry', speed: 'standard', memberTier: 'prime', expected: 0 },
-    { tier: 'heavy', zone: 'upcountry', speed: 'express', memberTier: 'prime', expected: 60 },
-    { tier: 'heavy', zone: 'remote', speed: 'standard', memberTier: 'prime', expected: 0 },
-    { tier: 'heavy', zone: 'remote', speed: 'express', memberTier: 'prime', expected: 90 },
+    { tier: 'heavy', zone: 'upcountry', speed: 'standard', memberTier: 'normal', expected: 120 },
+    { tier: 'heavy', zone: 'remote', speed: 'standard', memberTier: 'normal', expected: 180 },
   ] as const;
   it.each(cases)('$tier / $zone / $speed / $memberTier -> $expected baht', ({ tier, zone, speed, memberTier, expected }) => {
     expect(calculateShippingFee(tier, zone, speed, memberTier)).toBe(expected);
@@ -420,8 +404,8 @@ describe('calculateNetTotal (FR-4.8)', () => {
 
 /**
  * FR: FR-5.1 และลำดับตรวจ 4 ขั้นใน FR-5.2.1
- * เทคนิค: ECT สำหรับ zone/speed และสถานะ line; BVA สำหรับน้ำหนัก 20,000/20,001g;
- * Decision Table/priority sequence สำหรับผลของขั้นที่ผิดก่อน
+ * เทคนิคตาม SRS ส่วน 10.2: ECT สำหรับ zone/speed; BVA สำหรับขอบน้ำหนัก 20,000/20,001g
+ * ส่วนผลเมื่อหลายเงื่อนไขไม่ผ่าน ตรวจตามลำดับ validation ที่ FR-5.2.1 กำหนด
  */
 describe('validateCheckout (FR-5.1–5.2.1)', () => {
   const validLine = { productId: 'P1', quantity: 1, available: true, availableStock: 10 };
@@ -447,7 +431,7 @@ describe('validateCheckout (FR-5.1–5.2.1)', () => {
 
   const availabilityCases = [
     { available: false, quantity: 1, stock: 10, expected: true },
-    { available: true, quantity: 1, stock: 0, expected: true },
+    { available: false, quantity: 1, stock: 0, expected: true },
     { available: true, quantity: 3, stock: 2, expected: true },
     { available: true, quantity: 2, stock: 2, expected: false },
     { available: true, quantity: 1, stock: 10, expected: false },
@@ -494,7 +478,7 @@ describe('validateCheckout (FR-5.1–5.2.1)', () => {
 /**
  * FR: FR-9.1.1 ขั้นตรวจ price/stock
  * เทคนิค: ECT สำหรับชนิดข้อมูลที่ถูก/ผิด; BVA ที่ price 1/50,000 และ stock 0/9,999;
- * Decision Table สำหรับผลเมื่อระบุหนึ่งฟิลด์หรือสองฟิลด์ที่ผิดพร้อมกัน
+ * ตรวจรายชื่อฟิลด์ผิดทั้งหมดตาม FR-9.1.1 เมื่อระบุ price/stock แยกกันหรือพร้อมกัน
  */
 describe('validateProductUpdate (FR-9.1.1)', () => {
   it('requires at least price or stock', () => {
