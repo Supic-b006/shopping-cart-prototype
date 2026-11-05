@@ -1,5 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { copyFileSync, mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
+import { spawnSync } from 'node:child_process';
+import { fileURLToPath, pathToFileURL } from 'node:url';
+import path from 'node:path';
 import { validateTestEnvironment } from './test-environment.mjs';
 
 // Synthetic credentials on the reserved .invalid domain; no connections occur.
@@ -60,4 +64,32 @@ test('rejects remote frontend overrides and unmanaged services', () => {
 });
 test('requires the TLS flag without claiming certificate verification', () => {
   assert.throws(() => validateTestEnvironment({ ...valid(), DATABASE_SSL: 'false' }, 'integration'), /DATABASE_SSL=true/);
+});
+
+test('rejects blank or placeholder database credentials even for a confirmed matching target', () => {
+  for (const DATABASE_URL of ['', valid().DATABASE_URL.replace('synthetic-only', 'REPLACE_ME')]) {
+    assert.throws(() => validateTestEnvironment({ ...valid(), DATABASE_URL }, 'check'), /BLOCKED:/);
+  }
+});
+
+test('offline runtime check validates the target without reading a tracked credential example', () => {
+  // Keep synthetic fixtures under the ignored workspace; never load real env files.
+  const root = fileURLToPath(new URL('../', import.meta.url));
+  const output = path.join(root, 'test-results', 'environment-guards');
+  mkdirSync(output, { recursive: true });
+  const fixture = mkdtempSync(path.join(output, 'offline-'));
+  mkdirSync(path.join(fixture, 'scripts'));
+  for (const name of ['test-runtime.mjs', 'test-environment.mjs']) {
+    copyFileSync(path.join(root, 'scripts', name), path.join(fixture, 'scripts', name));
+  }
+  // There is deliberately no backend/.env.example in this fixture.
+  writeFileSync(path.join(fixture, '.env.e2e'), Object.entries(valid()).map(([key, value]) => `${key}=${value}`).join('\n'));
+  const blockNetwork = path.join(fixture, 'block-network.mjs');
+  writeFileSync(blockNetwork, "import net from 'node:net'; net.Socket.prototype.connect = function () { throw new Error('Network access forbidden in offline check'); };\n");
+  const result = spawnSync(process.execPath, ['--import', pathToFileURL(blockNetwork).href, path.join(fixture, 'scripts', 'test-runtime.mjs'), 'check'], {
+    cwd: fixture, encoding: 'utf8', windowsHide: true,
+    env: { ...process.env, NODE_TLS_REJECT_UNAUTHORIZED: '1' },
+  });
+  assert.equal(result.status, 0, result.stderr);
+  assert.match(result.stdout, /Offline environment validation passed/);
 });

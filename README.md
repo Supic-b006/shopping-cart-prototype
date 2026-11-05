@@ -44,7 +44,7 @@ WEB_ORIGIN=http://localhost:5173,http://127.0.0.1:5173
 NODE_ENV=test
 ALLOW_TEST_RESET=true
 TEST_RESET_KEY=change-this-to-a-random-secret-at-least-24-characters
-SEED_PASSWORD=CartDemo!2026
+SEED_PASSWORD=REPLACE_WITH_LOCAL_SEED_PASSWORD
 ```
 
 ใช้ **database password** ของโปรเจกต์ ไม่ใช่ anon key หรือรหัสผ่านบัญชี Supabase
@@ -89,7 +89,7 @@ HTTP test ถูก skip โดยตั้งใจเมื่อไม่ม�
 - API: http://localhost:4000/api
 - สถานะ DB: http://localhost:4000/api/health
 - บัญชี `cus_normal`, `cus_prime`, `admin01` ใช้รหัสผ่านเดียวกับ `SEED_PASSWORD`
-- ตัวอย่างนี้คือ `CartDemo!2026`; SRS ไม่กำหนด password จึงกำหนดผ่าน env
+- ตัวอย่างนี้คือ `REPLACE_WITH_LOCAL_SEED_PASSWORD`; SRS ไม่กำหนด password จึงกำหนดผ่าน env
 
 สำหรับ macOS/Linux ใช้ `cp backend/.env.example backend/.env` และ `cp frontend/.env.example frontend/.env` แทน `Copy-Item`
 

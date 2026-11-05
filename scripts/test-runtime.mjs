@@ -28,13 +28,10 @@ try {
   } else {
     if (!existsSync(envFile)) throw new Error('BLOCKED: run npm run test:env:init and have the owner configure .env.e2e privately.');
     const values = parse(readFileSync(envFile));
+    // Validate placeholders and the independently confirmed host/port/database/user.
+    // Examples are documentation, not a credential denylist. Revocation of any
+    // credential previously exposed in Git must be handled by its owner.
     validateTestEnvironment(values, action);
-    const exposed = parse(readFileSync(path.join(root, 'backend/.env.example'))).DATABASE_URL;
-    if (exposed) {
-      let known;
-      try { known = new URL(exposed); } catch { /* Placeholder-only examples are expected. */ }
-      if (known && decodeURIComponent(new URL(values.DATABASE_URL).password) === decodeURIComponent(known.password)) throw new Error('BLOCKED: do not reuse the credential present in the tracked example.');
-    }
     if (values.DATABASE_CA_FILE && (!path.isAbsolute(values.DATABASE_CA_FILE) || !existsSync(values.DATABASE_CA_FILE))) {
       throw new Error('BLOCKED: DATABASE_CA_FILE must be an existing absolute path.');
     }

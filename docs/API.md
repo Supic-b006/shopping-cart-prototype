@@ -10,7 +10,7 @@ Login ไม่ต้องมี token:
 POST /api/auth/login
 Content-Type: application/json
 
-{"username":"cus_prime","password":"CartDemo!2026"}
+{"username":"cus_prime","password":"REPLACE_WITH_LOCAL_SEED_PASSWORD"}
 ```
 
 ```json
