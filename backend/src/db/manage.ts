@@ -1,5 +1,5 @@
 import { readFile } from 'node:fs/promises';
-import { pool } from './pool.js';
+import { pool, closePool } from './pool.js';
 import { transaction } from './repository.js';
 import { seed } from './seed.js';
 try {
@@ -8,4 +8,4 @@ try {
  else if (command === 'seed') await transaction(db => seed(db));
  else throw new Error('Expected migrate or seed');
  console.log(`${command} completed`);
-} finally { await pool.end(); }
+} finally { await closePool(); }

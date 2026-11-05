@@ -1,0 +1,10 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "rootDir": ".",
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "noEmit": true
+  },
+  "include": ["tests/unit/**/*.ts", "tests/domain.test.ts", "tests/cartService.test.ts", "vitest*.config.ts"]
+}
