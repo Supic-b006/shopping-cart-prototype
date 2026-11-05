@@ -1,5 +1,9 @@
 # BEAN — Shopping Cart + Supabase
 
+**Combined project:** เริ่มติดตั้งจาก Clone/ZIP และรันทดสอบทุกระดับตาม [TESTING-README.md](TESTING-README.md)
+ใช้ `.env.e2e` ชุดเดียวผ่านคำสั่ง root ที่ตรวจ target ก่อนรัน DB ไม่คัดลอก credential จาก `backend/.env.example` หรือ Git history
+รายละเอียดด้านล่างเป็นคู่มือแอปเดิม; สำหรับ test setup ให้ใช้คู่มือ Combined ข้างต้น
+
 โค้ดเขียนใหม่จาก SRS-CART-002 v1.8 โดยใช้ ZIP เดิมเป็นข้อมูลอ้างอิงของขอบเขตงาน ไม่ได้เปลี่ยนชื่อไฟล์แล้วส่งโค้ดเดิม
 Frontend เป็น React SPA + Vite (แทน Next.js ใน ZIP) และ backend แยก HTTP, domain rules, service และ persistence ชัดเจน มี SQL schema ใหม่ชื่อ `bean` ซึ่งไม่ทับ schema `cart_api` ของ ZIP เดิม
 

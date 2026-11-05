@@ -5,7 +5,8 @@ const suite = enabled ? describe : describe.skip;
 suite('Supabase-backed HTTP contract', () => {
   it('exposes health and login after migration/seed', async () => {
     const { createApp } = await import('../src/app.js');
-    const server = createApp().listen(0);
+    const { pool } = await import('../src/db/pool.js');
+    const server = createApp().listen(0, '127.0.0.1');
     await new Promise<void>(resolve => server.once('listening', () => resolve()));
     const address = server.address();
     const port = typeof address === 'object' && address ? address.port : 0;
@@ -15,6 +16,9 @@ suite('Supabase-backed HTTP contract', () => {
       const login = await fetch(`http://127.0.0.1:${port}/api/auth/login`, {method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({username:'cus_normal',password:process.env.SEED_PASSWORD})});
       expect(login.status).toBe(200);
       expect((await login.json()).data.token).toMatch(/^[a-f0-9]{64}$/);
-    } finally { await new Promise<void>(resolve => server.close(() => resolve())); }
+    } finally {
+      try { await new Promise<void>(resolve => server.close(() => resolve())); }
+      finally { await pool.end(); }
+    }
   });
 });

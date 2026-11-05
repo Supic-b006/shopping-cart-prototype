@@ -78,7 +78,7 @@ suite('Integration: shopping cart API + PostgreSQL', () => {
     const { createApp } = await import('../src/app.js');
     const { pool } = await import('../src/db/pool.js');
     closePool = () => pool.end();
-    server = createApp().listen(0);
+    server = createApp().listen(0, '127.0.0.1');
     await new Promise<void>(resolve => server.once('listening', () => resolve()));
     const address = server.address();
     base = `http://127.0.0.1:${typeof address === 'object' && address ? address.port : 0}`;
