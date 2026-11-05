@@ -1,5 +1,8 @@
 import pg from "pg";
 import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
+import { PGlite } from "@electric-sql/pglite";
+import { createPgConfig } from "@electric-sql/pglite/node-postgres";
 
 if (!process.env.DATABASE_URL) {
   throw new Error("Set DATABASE_URL in backend/.env first");
@@ -22,7 +25,14 @@ const ssl =
           : {}),
       };
 
-export const pool = new pg.Pool({
+const isLocalPglite = process.env.PGLITE_TEST_DB === "true";
+const localDataDir = process.env.PGLITE_DATA_DIR ??
+  fileURLToPath(new URL("../../../.pglite-integration", import.meta.url));
+const localDatabase = isLocalPglite ? new PGlite(localDataDir) : undefined;
+
+const poolConfig = isLocalPglite
+  ? { ...createPgConfig(localDatabase!), max: 1 } as unknown as pg.PoolConfig
+  : {
   connectionString: process.env.DATABASE_URL,
   ssl,
 
@@ -38,7 +48,17 @@ export const pool = new pg.Pool({
   // ตรวจจับ connection ที่ขาดระหว่างเปิดใช้งาน
   keepAlive: true,
   keepAliveInitialDelayMillis: 10_000,
-});
+  };
+
+export const pool = new pg.Pool(poolConfig);
+
+export async function closePool(): Promise<void> {
+  try {
+    await pool.end();
+  } finally {
+    await localDatabase?.close();
+  }
+}
 
 // ป้องกัน idle connection error ทำให้ Node.js ปิดตัว
 pool.on("error", (error) => {

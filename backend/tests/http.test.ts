@@ -5,7 +5,7 @@ const suite = enabled ? describe : describe.skip;
 suite('Supabase-backed HTTP contract', () => {
   it('exposes health and login after migration/seed', async () => {
     const { createApp } = await import('../src/app.js');
-    const { pool } = await import('../src/db/pool.js');
+    const { closePool } = await import('../src/db/pool.js');
     const server = createApp().listen(0, '127.0.0.1');
     await new Promise<void>(resolve => server.once('listening', () => resolve()));
     const address = server.address();
@@ -18,7 +18,7 @@ suite('Supabase-backed HTTP contract', () => {
       expect((await login.json()).data.token).toMatch(/^[a-f0-9]{64}$/);
     } finally {
       try { await new Promise<void>(resolve => server.close(() => resolve())); }
-      finally { await pool.end(); }
+      finally { await closePool(); }
     }
   });
 });

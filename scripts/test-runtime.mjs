@@ -8,7 +8,7 @@ import { validateTestEnvironment } from './test-environment.mjs';
 const root = fileURLToPath(new URL('../', import.meta.url));
 const action = process.argv[2];
 const envFile = path.join(root, '.env.e2e');
-const browserPath = path.join(root, '.playwright-browsers');
+const localDbDir = path.join(root, '.pglite-integration');
 const node = process.execPath;
 function execute(args, cwd, env) {
   const child = spawnSync(node, args, { cwd, env, stdio: 'inherit', windowsHide: true });
@@ -24,25 +24,34 @@ try {
     }
   } else if (action === 'browsers') {
     execute([path.join(root, 'node_modules/playwright/cli.js'), 'install', 'chromium', 'ffmpeg'], root,
-      { ...process.env, PLAYWRIGHT_BROWSERS_PATH: browserPath });
+      { ...process.env });
   } else {
     if (!existsSync(envFile)) throw new Error('BLOCKED: run npm run test:env:init and have the owner configure .env.e2e privately.');
-    const values = parse(readFileSync(envFile));
-    // Validate placeholders and the independently confirmed host/port/database/user.
-    // Examples are documentation, not a credential denylist. Revocation of any
-    // credential previously exposed in Git must be handled by its owner.
-    validateTestEnvironment(values, action);
-    if (values.DATABASE_CA_FILE && (!path.isAbsolute(values.DATABASE_CA_FILE) || !existsSync(values.DATABASE_CA_FILE))) {
-      throw new Error('BLOCKED: DATABASE_CA_FILE must be an existing absolute path.');
-    }
     if (process.env.NODE_TLS_REJECT_UNAUTHORIZED === '0') throw new Error('BLOCKED: remove the inherited TLS verification bypass.');
+    const values = parse(readFileSync(envFile));
+    const externalActions = action === 'check' || action === 'e2e';
+    if (externalActions) {
+      validateTestEnvironment(values, action);
+      if (values.DATABASE_CA_FILE && (!path.isAbsolute(values.DATABASE_CA_FILE) || !existsSync(values.DATABASE_CA_FILE))) {
+        throw new Error('BLOCKED: DATABASE_CA_FILE must be an existing absolute path.');
+      }
+    }
     const env = { ...process.env };
     for (const key of Object.keys(env)) {
       if (/^(PG|DATABASE_|TEST_DATABASE_|SEED_|TEST_RESET_|RUN_DB_TESTS|ALLOW_TEST_RESET|E2E_|VITE_API_ORIGIN)/i.test(key)) delete env[key];
     }
-    Object.assign(env, values, { PLAYWRIGHT_BROWSERS_PATH: browserPath, PLAYWRIGHT_HTML_OPEN: 'never',
-      PORT: '4000', VITE_API_ORIGIN: '', E2E_EXTERNAL_SERVERS: 'false', E2E_CHROMIUM_PATH: '' });
-    if (action === 'http') env.ALLOW_TEST_RESET = 'false';
+    const localTestEnv = {
+      DATABASE_URL: 'postgresql://postgres:postgres@127.0.0.1:55432/postgres',
+      DATABASE_SSL: 'false', DATABASE_CA_FILE: '', NODE_ENV: 'test', RUN_DB_TESTS: 'true',
+      PGLITE_TEST_DB: 'true', PGLITE_DATA_DIR: localDbDir,
+      SEED_PASSWORD: 'local-test-password-only', TEST_RESET_KEY: 'local-test-reset-key-only-32-chars',
+      ALLOW_TEST_RESET: 'true', E2E_ALLOW_RESET: 'true',
+      PORT: '4000', VITE_API_ORIGIN: '', E2E_EXTERNAL_SERVERS: 'false', E2E_CHROMIUM_PATH: '',
+    };
+    Object.assign(env, externalActions ? values : localTestEnv, {
+      PLAYWRIGHT_HTML_OPEN: 'never',
+      PORT: '4000', VITE_API_ORIGIN: '', E2E_EXTERNAL_SERVERS: 'false', E2E_CHROMIUM_PATH: '',
+    });
     if (action === 'check') {
       console.log('Offline environment validation passed. No connection was made; owner confirmation and credential freshness must also be verified.');
     } else {
@@ -82,7 +91,7 @@ try {
   }
 } catch (error) {
   // Only our generic validation/runtime errors are printed here, never env values.
-  console.error(error instanceof Error && /^(BLOCKED:|Command failed|Unknown runtime|E2E did not|The (http|integration) suite)/.test(error.message)
+  console.error(error instanceof Error && /^(BLOCKED:|Command failed|Unknown runtime|Local PGlite|E2E did not|The (http|integration) suite)/.test(error.message)
     ? error.message : 'Runtime preparation failed. Check file paths and configuration without printing secrets.');
   process.exitCode = 1;
 }

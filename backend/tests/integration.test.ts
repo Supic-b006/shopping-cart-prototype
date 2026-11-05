@@ -76,8 +76,8 @@ suite('Integration: shopping cart API + PostgreSQL', () => {
     if (process.env.ALLOW_TEST_RESET !== 'true' || (process.env.TEST_RESET_KEY?.length ?? 0) < 24)
       throw new Error('Set ALLOW_TEST_RESET=true and TEST_RESET_KEY (>= 24 chars) in backend/.env to run integration tests');
     const { createApp } = await import('../src/app.js');
-    const { pool } = await import('../src/db/pool.js');
-    closePool = () => pool.end();
+    const { closePool: closeDatabase } = await import('../src/db/pool.js');
+    closePool = closeDatabase;
     server = createApp().listen(0, '127.0.0.1');
     await new Promise<void>(resolve => server.once('listening', () => resolve()));
     const address = server.address();

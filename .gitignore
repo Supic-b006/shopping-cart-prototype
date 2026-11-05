@@ -6,6 +6,9 @@ dist/
 !.env.example
 !/.env.e2e.example
 .playwright-browsers/
+.pglite-test/
+.pglite-integration/
+.pglite-integration.recovery-backup-*/
 playwright-report/
 test-results/
 
