@@ -17,7 +17,9 @@
     "db:seed": "npm run db:seed -w backend",
     "test": "npm test -w backend",
     "test:domain": "npm run test:domain -w backend",
-    "test:http": "npm run test:http -w backend"
+    "test:http": "npm run test:http -w backend",
+    "db:migrate:e2e": "node --env-file=.env.e2e --import tsx backend/src/db/manage.ts migrate",
+    "db:seed:e2e": "node --env-file=.env.e2e --import tsx backend/src/db/manage.ts seed"
   },
   "devDependencies": {
     "@playwright/test": "^1.64.1",
