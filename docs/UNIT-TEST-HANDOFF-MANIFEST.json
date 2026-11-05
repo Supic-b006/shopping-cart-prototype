@@ -1,0 +1,138 @@
+{
+  "schema_version": 3,
+  "status": "BLOCKED_SECURITY_REVIEW_BEFORE_PUBLICATION",
+  "verified_scope": "Executed on Team integration branch: Our 340 passed / 5 TODO, Team cartService 556 passed, legacy domain 3 passed (already in Our); unique 896 passed / 5 TODO. TypeScript source and tests pass. Selected domain coverage: 98.96% statements, 97.01% branches, 100% functions/lines.",
+  "team_observed": {
+    "branch": "Unit-Test",
+    "commit": "8c8ecd7cc0074168252d30f127cd5216243e503b",
+    "tracked_files_unchanged": 35,
+    "vitest_locked": "5.1.0",
+    "tracked_files_before": 39,
+    "authorized_tracked_files_modified": 4
+  },
+  "our_vitest": "3.2.4 (historical source workspace)",
+  "runtime_test_files": [
+    "package.json",
+    "package-lock.json",
+    "backend/package.json",
+    "backend/tsconfig.json",
+    "backend/tsconfig.unit.json",
+    "backend/vitest.config.ts",
+    "backend/vitest.unit.config.ts",
+    "backend/tests/domain.test.ts",
+    "backend/tests/unit/errors.test.ts",
+    "backend/tests/unit/helpers.ts",
+    "backend/tests/unit/pricing.test.ts",
+    "backend/tests/unit/shop.test.ts",
+    "backend/tests/unit/srs-v18.test.ts",
+    "backend/tests/unit/high-value.test.ts",
+    "backend/tests/cartService.test.ts"
+  ],
+  "github_add": [
+    "backend/tests/unit/errors.test.ts",
+    "backend/tests/unit/helpers.ts",
+    "backend/tests/unit/pricing.test.ts",
+    "backend/tests/unit/shop.test.ts",
+    "backend/tests/unit/srs-v18.test.ts",
+    "backend/tests/unit/high-value.test.ts",
+    "backend/tsconfig.unit.json",
+    "backend/vitest.unit.config.ts",
+    ".unit-testing/generate-traceability.cjs",
+    "docs/UNIT-TEST-METADATA.json",
+    "docs/UNIT-TEST-CASES-high-value.csv",
+    "docs/UNIT-TESTING-REPORT.md",
+    "docs/UNIT-TEST-HANDOFF.md",
+    "docs/UNIT-TEST-HANDOFF-MANIFEST.json"
+  ],
+  "github_merge": [
+    {
+      "file": "package.json",
+      "action": "Merged dedicated unit/team-unit/coverage/typecheck:unit wrappers; all existing Team scripts and dependencies retained."
+    },
+    {
+      "file": "backend/package.json",
+      "action": "Merged unit scripts and exact coverage-v8 5.1.0; Team Vitest ^5.1.0 and all existing scripts/dependencies retained."
+    },
+    {
+      "file": "package-lock.json",
+      "action": "npm resolved coverage-v8 5.1.0 against Team lock; no existing package versions changed; not copied from Our."
+    },
+    {
+      "file": ".gitignore",
+      "action": "Added generated coverage/cache/evidence exclusions; generator remains trackable."
+    }
+  ],
+  "keep": [
+    "backend/src/** including Team cartService.ts",
+    "frontend/**",
+    "database/**",
+    "backend/tests/domain.test.ts",
+    "backend/tests/http.test.ts",
+    "backend/tests/cartService.test.ts",
+    "backend/tsconfig.json",
+    "backend/vitest.config.ts",
+    "tests/e2e/**",
+    "playwright.config.ts",
+    "existing Team README/API/OpenAPI/SRS-MAPPING documentation",
+    "Team .env.example (no unit-overlay overwrite; separate prior security review still required)"
+  ],
+  "exclude": [
+    "**/.env",
+    "**/.env.* (do not upload Our environment files/examples)",
+    "**/node_modules/**",
+    "**/coverage/**",
+    "**/test-results/**",
+    "**/dist/**",
+    "**/playwright-report/**",
+    ".npm-cache/**",
+    ".unit-testing/dependency-stage/**",
+    ".unit-testing/history/**",
+    ".unit-testing/before/**",
+    ".unit-testing/deliverables/**",
+    ".unit-testing/results/**",
+    ".unit-testing/*verification*.json",
+    ".unit-testing/baseline-hashes.json",
+    ".unit-testing/reconcile-srs-v18.cjs",
+    "docs/UNIT-TEST-CASES.csv",
+    "docs/UNIT-TEST-CASES-v2.csv",
+    "docs/UNIT-TEST-CASES-reviewed.csv",
+    "docs/UNIT-TEST-CASES-srs-v18.csv",
+    "docs/UNIT-TEST-SRS-V18-AUDIT.csv (historical audit; optional review reference, not current suite inventory)"
+  ],
+  "verification_evidence_local_only": [
+    "backend/test-results/unit-runs/2026-11-04T08-50-25-720Z-2212/results.json",
+    "backend/test-results/unit-runs/2026-11-04T08-50-28-075Z-25288/results.json",
+    "backend/test-results/team-runs/merge-2026-11-04T08-45-44-446Z/cartService.json",
+    "backend/test-results/team-runs/merge-2026-11-04T08-45-44-446Z/domain.json",
+    "backend/coverage/unit-runs/2026-11-04T08-50-28-075Z-25288/coverage-summary.json",
+    "backend/coverage/unit-runs/2026-11-04T08-50-28-075Z-25288/coverage-final.json"
+  ],
+  "preservation": {
+    "before_edit_archive": "../unit-merge-evidence-2026-11-04T08-40-38-575Z/before",
+    "baseline": "../unit-merge-evidence-2026-11-04T08-40-38-575Z/baseline.json",
+    "command_evidence": "../unit-merge-evidence-2026-11-04T08-40-38-575Z/command-runs.json",
+    "verification": "../unit-merge-evidence-2026-11-04T08-40-38-575Z/final-verification.json",
+    "source_workspace": "Our workspace and its historical evidence unchanged"
+  },
+  "limitations": [
+    "Tracked backend/.env.example:3 contains a credential-shaped database URL. Owner verification and rotation if real required before Push/PR; no secret values included, no connectivity tested, no history rewritten.",
+    "Coverage only pricing.ts/shop.ts/errors.ts; Team cartService.ts is a separate module and excluded. Vitest5 counts differ from historical Vitest3.",
+    "Five TODOs retained; no invented oracle for specification gaps.",
+    "Team 556 cases executed for compatibility; no claim of a fresh complete oracle/requirement audit of those cases.",
+    "No HTTP/database/integration/E2E/Playwright execution. npm install used ignore-scripts; no clean npm ci reproducibility run.",
+    "No staging, commit, push or PR."
+  ],
+  "integration_branch": "test/bean-unit-srs-v1.8",
+  "base_branch": "Unit-Test",
+  "base_commit": "8c8ecd7cc0074168252d30f127cd5216243e503b",
+  "integrated_vitest": "5.1.0",
+  "integrated_coverage_v8": "5.1.0",
+  "traceability": {
+    "cases": 345,
+    "specification_confirmed": 312,
+    "api_contract_only": 28,
+    "pending": 5,
+    "selectors_migrated": 134,
+    "ids_preserved": true
+  }
+}

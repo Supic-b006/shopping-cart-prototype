@@ -6,3 +6,14 @@ dist/
 !.env.example
 playwright-report/
 test-results/
+
+# Generated unit test artifacts; keep source/config and traceability generator
+coverage/
+.npm-cache/
+.unit-testing/dependency-stage/
+.unit-testing/history/
+.unit-testing/before/
+.unit-testing/results/
+.unit-testing/deliverables/
+.unit-testing/*verification*.json
+.unit-testing/baseline-hashes.json
